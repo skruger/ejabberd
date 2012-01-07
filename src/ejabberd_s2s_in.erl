@@ -82,7 +82,8 @@
 		authenticated = false,
 		auth_domain,
 	        connections = ?DICT:new(),
-		timer}).
+		timer,
+		dialback_verify=true}).
 
 
 %-define(DBGFSM, true).
@@ -172,6 +173,10 @@ init([{SockMod, Socket}, Opts]) ->
 		  CertFile ->
 		      [{certfile, CertFile}]
 	      end,
+    DialbackVerify = case proplists:get_value(dialback_verify_disable,Opts,false) of
+              true ->false;
+              _ -> true
+          end,
     Timer = erlang:start_timer(?S2STIMEOUT, self(), []),
     {ok, wait_for_stream,
      #state{socket = Socket,
@@ -183,6 +188,7 @@ init([{SockMod, Socket}, Opts]) ->
 	    tls_required = TLSRequired,
 	    tls_certverify = TLSCertverify,
 	    tls_options = TLSOpts,
+	    dialback_verify=DialbackVerify,
 	    timer = Timer}}.
 
 %%----------------------------------------------------------------------
@@ -413,7 +419,7 @@ stream_established({xmlstreamelement, El}, StateData) ->
             %% domain is handled by this server:
             case {ejabberd_s2s:allow_host(LTo, LFrom),
                   lists:member(LTo, ejabberd_router:dirty_get_all_domains())} of
-                {true, true} ->
+                {true, true} when StateData#state.dialback_verify ->
 		    ejabberd_s2s_out:terminate_if_waiting_delay(LTo, LFrom),
 		    ejabberd_s2s_out:start(LTo, LFrom,
 					   {verify, self(),
@@ -425,6 +431,9 @@ stream_established({xmlstreamelement, El}, StateData) ->
 		     stream_established,
 		     StateData#state{connections = Conns,
 				     timer = Timer}};
+		{true,true} ->
+		    gen_fsm:send_event(self(),{valid,From,To}),
+		    {next_state,stream_established,StateData#state{timer=Timer}};
 		{_, false} ->
 		    send_text(StateData, ?HOST_UNKNOWN_ERR),
 		    {stop, normal, StateData};
