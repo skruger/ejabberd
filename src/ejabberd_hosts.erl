@@ -254,6 +254,12 @@ handle_info({reload, Host}, State = #state{state=wait_odbc}) ->
     ?ERROR_MSG("Tried to reload ~p while waiting for odbc startup.", [Host]),
     handle_info(timeout, State);
 
+handle_info({start_stop_hosts,AddedHosts,DeletedHosts}, State) ->
+    stop_hosts(DeletedHosts),
+    start_hosts(AddedHosts),
+    ejabberd_local:refresh_iq_handlers(),
+    {noreply, State};
+
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -293,9 +299,7 @@ reload_hosts(NewHosts) ->
     update_config(AddHostConfig,DeletedHosts),
     RemovedNotDelete = RemovedHosts -- DeletedHosts,
     ejabberd_config:add_global_option(hosts, NewHosts++RemovedNotDelete), % overwrite hosts list
-    stop_hosts(DeletedHosts),
-    start_hosts(AddedHosts),
-    ejabberd_local:refresh_iq_handlers(),
+    rpc:abcast(?MODULE,{start_stop_hosts,AddedHosts,DeletedHosts}),
     {DeletedHosts, AddedHosts}.
 
 %% updates the configuration of an existing virtual host
