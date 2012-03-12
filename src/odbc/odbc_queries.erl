@@ -5,7 +5,7 @@
 %%% Created : by Mickael Remond <mremond@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2011   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2012   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -585,7 +585,7 @@ escape($\n) -> "\\n";
 escape($\t) -> "\\t";
 escape($\b) -> "\\b";
 escape($\r) -> "\\r";
-escape($')  -> "\\'";
+escape($')  -> "''";
 escape($")  -> "\\\"";
 escape($\\) -> "\\\\";
 escape(C)   -> C.
