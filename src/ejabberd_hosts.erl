@@ -50,6 +50,7 @@
 -export([get_hosts/1
          ,config_from_string/2
          ,get_host_config/2
+         ,get_local_configs/1
          ,diff_hosts/0
          ,diff_hosts/1
          ,diff_hosts/2
@@ -184,6 +185,12 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({update_local_config,ConfigList},_From,State) ->
+    F = fun() ->
+            mnesia:write_lock_table(local_config),
+            lists:foreach(fun(R) -> mnesia:write(R) end,ConfigList)
+        end,
+    {reply, mnesia:transaction(F), State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.
@@ -298,8 +305,15 @@ reload_hosts(NewHosts) ->
                               end, AddedHosts),
     update_config(AddHostConfig,DeletedHosts),
     RemovedNotDelete = RemovedHosts -- DeletedHosts,
+    %% Sync hosts
+    ClusterNodes = find_cluster_nodes(),
+    ConfigList = get_local_configs(AddedHosts),
+    %% multi_call can work from within the gen_server because it only calls the gen_server
+    %% instances on other nodes.
+    gen_server:multi_call(ClusterNodes, ?MODULE, {update_local_config,ConfigList}, 2000),
     ejabberd_config:add_global_option(hosts, NewHosts++RemovedNotDelete), % overwrite hosts list
-    rpc:abcast(?MODULE,{start_stop_hosts,AddedHosts,DeletedHosts}),
+    %% abcast is used because this may execute in the gen_server context
+    rpc:abcast([node()|ClusterNodes], ?MODULE, {start_stop_hosts,AddedHosts,DeletedHosts}),
     {DeletedHosts, AddedHosts}.
 
 %% updates the configuration of an existing virtual host
@@ -461,6 +475,20 @@ get_clusterid() ->
 	    ?ERROR_MSG("Change your misconfigured {clusterid, ~p} to the value: ~p", [Other, 1]),
 	    1
     end.
+
+find_cluster_nodes() ->
+    mnesia:table_info(schema,disc_copies) -- [node()].
+
+get_local_configs(HostList) ->
+    AllConfigKeys = mnesia:dirty_all_keys(local_config),
+    ConfigKeys =
+    lists:flatmap(fun(H) ->
+                lists:filter(fun({H1,H2}) when H1==H; H2==H -> true;
+                                (_) -> false end,
+                            AllConfigKeys)
+                end, HostList),
+    lists:flatmap(fun(K) -> mnesia:dirty_read(local_config,K) end,
+        ConfigKeys).
 
 commands() ->
     [
