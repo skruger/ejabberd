@@ -9,7 +9,7 @@ ERL_MAX_ETS_TABLES=1400
 
 # define default environment variables
 NODE=ejabberd
-HOST=localhost
+HOST=`hostname -s`
 ERLANG_NODE=$NODE@$HOST
 ERL=@erl@
 INSTALLUSER=@installuser@

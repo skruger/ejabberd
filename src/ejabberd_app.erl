@@ -29,10 +29,9 @@
 
 -behaviour(application).
 
--export([start_modules/0,start/2, get_log_path/0, prep_stop/1, stop/1, init/0]).
+-export([start/2, get_log_path/0, prep_stop/1, stop/1, init/0]).
 
 -include("ejabberd.hrl").
-
 
 %%%
 %%% Application API
@@ -60,6 +59,8 @@ start(normal, _Args) ->
     %% Loading ASN.1 driver explicitly to avoid races in LDAP
     catch asn1rt:load_driver(),
     Sup = ejabberd_sup:start_link(),
+    %% ejabberd_hosts is started by ejabberd_sup, but needs to finish_init only once.
+    ejabberd_hosts ! finish_init,
     ejabberd_rdbms:start(),
     ejabberd_auth:start(),
     cyrsasl:start(),
@@ -67,7 +68,7 @@ start(normal, _Args) ->
     %ejabberd_debug:eprof_start(),
     %ejabberd_debug:fprof_start(),
     maybe_add_nameservers(),
-    start_modules(),
+    %% start_modules(), %% Moved to ejabberd_hosts
     ejabberd_listener:start_listeners(),
     ?INFO_MSG("ejabberd ~s is started in the node ~p", [?VERSION, node()]),
     Sup;
@@ -78,7 +79,7 @@ start(_, _) ->
 %% This function is called when an application is about to be stopped,
 %% before shutting down the processes of the application.
 prep_stop(State) ->
-    stop_modules(),
+    ejabberd_hosts:stop_all_hosts(),
     ejabberd_admin:stop(),
     broadcast_c2s_shutdown(),
     timer:sleep(5000),
@@ -130,35 +131,6 @@ db_init() ->
     application:start(mnesia, permanent),
     mnesia:wait_for_tables(mnesia:system_info(local_tables), infinity).
 
-%% Start all the modules in all the hosts
-start_modules() ->
-    lists:foreach(
-      fun(Host) ->
-	      case ejabberd_config:get_local_option({modules, Host}) of
-		  undefined ->
-		      ok;
-		  Modules ->
-		      lists:foreach(
-			fun({Module, Args}) ->
-				gen_mod:start_module(Host, Module, Args)
-			end, Modules)
-	      end
-      end, ?MYHOSTS).
-
-%% Stop all the modules in all the hosts
-stop_modules() ->
-    lists:foreach(
-      fun(Host) ->
-	      case ejabberd_config:get_local_option({modules, Host}) of
-		  undefined ->
-		      ok;
-		  Modules ->
-		      lists:foreach(
-			fun({Module, _Args}) ->
-				gen_mod:stop_module_keep_config(Host, Module)
-			end, Modules)
-	      end
-      end, ?MYHOSTS).
 
 connect_nodes() ->
     case ejabberd_config:get_local_option(cluster_nodes) of

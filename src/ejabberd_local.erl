@@ -30,7 +30,7 @@
 -behaviour(gen_server).
 
 %% API
--export([start_link/0]).
+-export([start_link/0,register_host/1,unregister_host/1]).
 
 -export([route/3,
 	 route_iq/4,
@@ -176,6 +176,12 @@ bounce_resource_packet(From, To, Packet) ->
     ejabberd_router:route(To, From, Err),
     stop.
 
+register_host(Host) ->
+    gen_server:call(?MODULE, {register_host, Host}).
+
+unregister_host(Host) ->
+    gen_server:call(?MODULE, {unregister_host, Host}).
+
 %%====================================================================
 %% gen_server callbacks
 %%====================================================================
@@ -188,12 +194,6 @@ bounce_resource_packet(From, To, Packet) ->
 %% Description: Initiates the server
 %%--------------------------------------------------------------------
 init([]) ->
-    lists:foreach(
-      fun(Host) ->
-	      ejabberd_router:register_route(Host, {apply, ?MODULE, route}),
-	      ejabberd_hooks:add(local_send_to_resource_hook, Host,
-				 ?MODULE, bounce_resource_packet, 100)
-      end, ?MYHOSTS),
     catch ets:new(?IQTABLE, [named_table, public]),
     update_table(),
     mnesia:create_table(iq_response,
@@ -211,6 +211,16 @@ init([]) ->
 %%                                      {stop, Reason, State}
 %% Description: Handling call messages
 %%--------------------------------------------------------------------
+handle_call({register_host, Host}, _From, State) ->
+    ejabberd_router:register_route(Host, {apply, ?MODULE, route}),
+    ejabberd_hooks:add(local_send_to_resource_hook, Host,
+                       ?MODULE, bounce_resource_packet, 100),
+    {reply, ok, State};
+handle_call({unregister_host, Host}, _From, State) ->
+    ejabberd_router:unregister_route(Host),
+    ejabberd_hooks:delete(local_send_to_resource_hook, Host,
+                       ?MODULE, bounce_resource_packet, 100),
+    {reply, ok, State};
 handle_call(_Request, _From, State) ->
     Reply = ok,
     {reply, Reply, State}.

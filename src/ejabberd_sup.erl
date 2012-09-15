@@ -184,6 +184,13 @@ init([]) ->
 	 infinity,
 	 supervisor,
 	 [cache_tab_sup]},
+    EjabberdHosts =
+	{ejabberd_hosts,
+	 {ejabberd_hosts, start_link, []},
+	 permanent,
+	 infinity,
+	 supervisor,
+	 [ejabberd_hosts]},
     {ok, {{one_for_one, 10, 1},
 	  [Hooks,
 	   NodeGroups,
@@ -204,6 +211,7 @@ init([]) ->
 	   STUNSupervisor,
 	   FrontendSocketSupervisor,
 	   CacheTabSupervisor,
-	   Listener]}}.
+	   Listener,
+       EjabberdHosts]}}.
 
 
