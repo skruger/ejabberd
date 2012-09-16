@@ -61,8 +61,8 @@ start(normal, _Args) ->
     Sup = ejabberd_sup:start_link(),
     %% ejabberd_hosts is started by ejabberd_sup, but needs to finish_init only once.
     ejabberd_hosts ! finish_init,
-    ejabberd_rdbms:start(),
-    ejabberd_auth:start(),
+    %ejabberd_rdbms:start(),
+    %ejabberd_auth:start(),
     cyrsasl:start(),
     % Profiling
     %ejabberd_debug:eprof_start(),

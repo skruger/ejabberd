@@ -38,15 +38,28 @@ handle_call(_Msg, _From, State) ->
 
 handle_cast({start_host, Host, ReplyTo}, State) ->
     ?ERROR_MSG("~p~n", [ {start_host, Host, ReplyTo} ]),
+    HostSupName = ejabberd_host_sup:get_name(Host),
+    HostSup = {HostSupName, {ejabberd_host_sup, start_link, [Host]},
+               permanent, 10000, supervisor, [ejabberd_host_sup]},
+    SupStart = supervisor:start_child(ejabberd_sup, HostSup),
+    ejabberd_rdbms:start_host(Host),
+    Auth = ejabberd_auth:start(Host),
     start_modules(Host),
     register_routes(Host),
     gen_server:cast(self(),{reply, ok, ReplyTo}),
+    ?INFO_MSG("Supervisor result: ~n~p~nAuth results: ~n~p~n",[SupStart,Auth]),
     {noreply, State};
 handle_cast({stop_host, Host, ReplyTo}, State) ->
     ?ERROR_MSG("~p~n", [ {stop_host, Host, ReplyTo} ]),
     stop_modules(Host),
     unregister_routes(Host),
+    Auth = ejabberd_auth:stop(Host),
+    ejabberd_rdbms:stop_host(Host),
     gen_server:cast(self(),{reply, ok, ReplyTo}),
+    HostSupName = ejabberd_host_sup:get_name(Host),
+    catch supervisor:terminate_child(ejabberd_sup, HostSupName),
+    catch supervisor:delete_child(ejabberd_sup, HostSupName),
+    ?INFO_MSG("Auth results: ~n~p~n",[Auth]),
     {noreply, State};
 handle_cast({reply, _Value, false}, State) ->
     {noreply, State};

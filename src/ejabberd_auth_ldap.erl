@@ -103,13 +103,15 @@ start(Host) ->
       Proc, {?MODULE, start_link, [Host]},
       transient, 1000, worker, [?MODULE]
      },
-    supervisor:start_child(ejabberd_sup, ChildSpec).
+    ejabberd_host_sup:start_child(Host, ChildSpec).
+    %supervisor:start_child(ejabberd_sup, ChildSpec).
 
 stop(Host) ->
     Proc = gen_mod:get_module_proc(Host, ?MODULE),
     gen_server:call(Proc, stop),
-    supervisor:terminate_child(ejabberd_sup, Proc),
-    supervisor:delete_child(ejabberd_sup, Proc).
+    ejabberd_host_sup:stop_child(Host, Proc).
+    %supervisor:terminate_child(ejabberd_sup, Proc),
+    %supervisor:delete_child(ejabberd_sup, Proc).
 
 start_link(Host) ->
     Proc = gen_mod:get_module_proc(Host, ?MODULE),

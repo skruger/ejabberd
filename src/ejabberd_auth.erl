@@ -31,6 +31,8 @@
 
 %% External exports
 -export([start/0,
+     start/1,
+     stop/1,
 	 set_password/3,
 	 check_password/3,
 	 check_password/5,
@@ -62,13 +64,19 @@
 %%% API
 %%%----------------------------------------------------------------------
 start() ->
-    lists:foreach(
-      fun(Host) ->
-	      lists:foreach(
-		fun(M) ->
-			M:start(Host)
-		end, auth_modules(Host))
-      end, ?MYHOSTS).
+    lists:foreach(fun start/1, ?MYHOSTS).
+
+start(Host) ->
+    lists:map(
+        fun(M) ->
+            {M, catch M:start(Host)}
+        end, auth_modules(Host)).
+
+stop(Host) ->
+    lists:map(
+        fun(M) ->
+            {M, catch M:stop(Host)}
+        end, auth_modules(Host)).
 
 %% This is only executed by ejabberd_c2s for non-SASL auth client
 plain_password_required(Server) ->

@@ -29,6 +29,7 @@
 
 %% External exports
 -export([start/1,
+     stop/1,
 	 set_password/3,
 	 check_password/3,
 	 check_password/5,
@@ -67,6 +68,8 @@ start(Host) ->
     update_reg_users_counter_table(Host),
     maybe_alert_password_scrammed_without_option(),
     ok.
+
+stop(_Host) -> ok.
 
 update_reg_users_counter_table(Server) ->
     Set = get_vh_registered_users(Server),

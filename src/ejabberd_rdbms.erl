@@ -27,7 +27,7 @@
 -module(ejabberd_rdbms).
 -author('alexey@process-one.net').
 
--export([start/0]).
+-export([start/0,start_host/1,stop_host/1]).
 -include("ejabberd.hrl").
 
 start() ->
@@ -49,6 +49,24 @@ start_hosts() ->
 		  false -> ok
 	      end
       end, ?MYHOSTS).
+
+start_host(Host) ->
+    case catch ejabberd_odbc_sup:module_info() of
+	{'EXIT',{undef,_}} ->
+	    ?INFO_MSG("ejabberd has not been compiled with relational database support. Skipping database startup.", []),
+        no_odbc;
+	_ ->
+        case needs_odbc(Host) of
+            true -> start_odbc(Host);
+            false -> ok
+        end
+    end.
+
+stop_host(Host) ->
+    Supervisor_name = gen_mod:get_module_proc(Host, ejabberd_odbc_sup),
+    catch supervisor:terminate_child(ejabberd_sup, Supervisor_name),
+    catch supervisor:delete_child(ejabberd_sup, Supervisor_name),
+    ok.
 
 %% Start the ODBC module on the given host
 start_odbc(Host) ->
