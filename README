@@ -1,4 +1,7 @@
-ejabberd - High-Performance Enterprise Instant Messaging Server 
+Fork21 ejabberd - High-Performance Enterprise Instant Messaging Server 
+
+This is a development branch of ejabberd whose purpose is to play with
+ejabberd's design.  For progress updates please see http://www.fork21.com/
 
 Quickstart guide
 
