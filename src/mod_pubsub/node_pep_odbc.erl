@@ -323,7 +323,7 @@ path_to_node(Path) ->
 %% Check that the mod_caps module is enabled in that Jabber Host
 %% If not, show a warning message in the ejabberd log file.
 complain_if_modcaps_disabled(ServerHost) ->
-    Modules = ejabberd_config:get_local_option({modules, ServerHost}),
+    Modules = gen_mod:get_host_modules(ServerHost),
     ModCaps = [mod_caps_enabled || {mod_caps, _Opts} <- Modules],
     case ModCaps of
 	[] ->

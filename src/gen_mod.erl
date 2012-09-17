@@ -31,6 +31,8 @@
 	 start_module/3,
 	 stop_module/2,
 	 stop_module_keep_config/2,
+     get_host_modules/1,
+     set_host_modules/2,
 	 get_opt/2,
 	 get_opt/3,
 	 get_opt_host/3,
@@ -206,25 +208,33 @@ loaded_modules_with_opts(Host) ->
 		 [{{'$1', '$2'}}]}]).
 
 set_module_opts_mnesia(Host, Module, Opts) ->
-    Modules = case ejabberd_config:get_local_option({modules, Host}) of
-		  undefined ->
-		      [];
-		  Ls ->
-		      Ls
-	      end,
+    Modules = get_host_modules(Host),
     Modules1 = lists:keydelete(Module, 1, Modules),
     Modules2 = [{Module, Opts} | Modules1],
-    ejabberd_config:add_local_option({modules, Host}, Modules2).
+    set_host_modules(Host, Modules2).
 
 del_module_mnesia(Host, Module) ->
-    Modules = case ejabberd_config:get_local_option({modules, Host}) of
-		  undefined ->
-		      [];
-		  Ls ->
-		      Ls
-	      end,
+    Modules = get_host_modules(Host),
     Modules1 = lists:keydelete(Module, 1, Modules),
-    ejabberd_config:add_local_option({modules, Host}, Modules1).
+    set_host_modules(Host, Modules1).
+
+get_host_modules(Host) ->
+    case ejabberd_config:get_local_option({modules, Host}) of
+        undefined ->
+            case ejabberd_config:get_global_option({modules, Host}) of
+                undefined ->
+                    case ejabberd_config:get_global_option({modules, global}) of
+                        undefined ->
+                            [];
+                        Mods -> Mods
+                    end;
+                Mods -> Mods
+            end;
+        Mods -> Mods
+    end.
+
+set_host_modules(Host, Modules) ->
+    ejabberd_config:add_global_option({modules, Host}, Modules).
 
 get_hosts(Opts, Prefix) ->
     case catch gen_mod:get_opt(hosts, Opts) of

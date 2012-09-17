@@ -382,7 +382,7 @@ auth_modules() ->
 %% Return the list of authenticated modules for a given host
 auth_modules(Server) ->
     LServer = jlib:nameprep(Server),
-    Method = ejabberd_config:get_local_option({auth_method, LServer}),
+    Method = ejabberd_config:get_global_option({auth_method, LServer}),
     Methods = if
 		  Method == undefined -> [];
 		  is_list(Method) -> Method;

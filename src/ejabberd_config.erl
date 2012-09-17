@@ -443,6 +443,9 @@ process_term(Term, State) ->
 	    State;
 	{max_fsm_queue, N} ->
 	    add_option(max_fsm_queue, N, State);
+    {modules, MList} ->
+        gen_mod:set_host_modules(global, MList),
+        State;
 	{_Opt, _Val} ->
 	    lists:foldl(fun(Host, S) -> process_host_term(Term, Host, S) end,
 			State, State#state.hosts)
@@ -457,6 +460,10 @@ process_host_term(Term, Host, State) ->
 	    State#state{opts = [#config{key = {access, RuleName, Host},
 					value = Rules} |
 				State#state.opts]};
+	{auth_method, Methods} ->
+	    State#state{opts = [#config{key = {auth_method, Host},
+					value = Methods} |
+				State#state.opts]};
 	{shaper, Name, Data} ->
 	    State#state{opts = [#config{key = {shaper, Name, Host},
 					value = Data} |
@@ -465,6 +472,9 @@ process_host_term(Term, Host, State) ->
 	    State;
 	{hosts, _Hosts} ->
 	    State;
+    {modules, MList} ->
+        gen_mod:set_host_modules(Host, MList),
+        State;
 	{odbc_server, ODBC_server} ->
 	    add_option({odbc_server, Host}, ODBC_server, State);
 	{Opt, Val} ->

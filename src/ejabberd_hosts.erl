@@ -105,25 +105,17 @@ unregister_routes(Host) ->
 
 start_modules(Host) ->
     ?INFO_MSG("Starting modules for ~p~n", [Host]),
-    case ejabberd_config:get_local_option({modules, Host}) of
-        undefined ->
-		    ok;
-		Modules ->
-		    lists:foreach(
-		    	fun({Module, Args}) ->
-			    	gen_mod:start_module(Host, Module, Args)
-    			end, Modules)
-    end.
+    Modules = gen_mod:get_host_modules(Host),
+    lists:foreach(
+        fun({Module,Args}) ->
+            gen_mod:start_module(Host, Module, Args)
+        end, Modules).
 
 stop_modules(Host) ->
     ?INFO_MSG("Stopping modules for ~p~n", [Host]),
-	case ejabberd_config:get_local_option({modules, Host}) of
-	    undefined ->
-		    ok;
-		Modules ->
-		    lists:foreach(
-			    fun({Module, _Args}) ->
-				    gen_mod:stop_module_keep_config(Host, Module)
-    			end, Modules)
-	end.
+    Modules = gen_mod:loaded_modules(Host),
+    lists:foreach(
+        fun(Module) ->
+	        gen_mod:stop_module_keep_config(Host, Module)
+    	end, Modules).
 

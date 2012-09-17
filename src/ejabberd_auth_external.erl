@@ -317,4 +317,5 @@ get_mod_last_configured(Server) ->
     end.
 
 is_configured(Host, Module) ->
-    lists:keymember(Module, 1, ejabberd_config:get_local_option({modules, Host})).
+    lists:keymember(Module, 1, gen_mod:get_host_modules(Host)).
+
