@@ -171,7 +171,7 @@ try_register(User, Server, Password) ->
 	true ->
 	    {atomic, exists};
 	false ->
-	    case lists:member(jlib:nameprep(Server), ?MYHOSTS) of
+	    case lists:member(jlib:nameprep(Server), ?RUNNINGHOSTS) of
 		true ->
 		    Res = lists:foldl(
 		      fun(_M, {atomic, ok} = Res) ->
@@ -382,10 +382,19 @@ auth_modules() ->
 %% Return the list of authenticated modules for a given host
 auth_modules(Server) ->
     LServer = jlib:nameprep(Server),
-    Method = ejabberd_config:get_global_option({auth_method, LServer}),
+    Method = auth_modules_config(LServer),
     Methods = if
 		  Method == undefined -> [];
 		  is_list(Method) -> Method;
 		  is_atom(Method) -> [Method]
 	      end,
     [list_to_atom("ejabberd_auth_" ++ atom_to_list(M)) || M <- Methods].
+
+auth_modules_config(Server) ->
+    case ejabberd_config:get_global_option({auth_method, Server}) of
+        undefined ->
+            ejabberd_config:get_global_option({auth_method, global});
+        Methods ->
+            Methods
+    end.
+

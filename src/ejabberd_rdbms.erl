@@ -64,9 +64,7 @@ start_host(Host) ->
 
 stop_host(Host) ->
     Supervisor_name = gen_mod:get_module_proc(Host, ejabberd_odbc_sup),
-    catch supervisor:terminate_child(ejabberd_sup, Supervisor_name),
-    catch supervisor:delete_child(ejabberd_sup, Supervisor_name),
-    ok.
+    ejabberd_host_sup:stop_child(Host, Supervisor_name).
 
 %% Start the ODBC module on the given host
 start_odbc(Host) ->
@@ -78,7 +76,7 @@ start_odbc(Host) ->
 	 infinity,
 	 supervisor,
 	 [ejabberd_odbc_sup]},
-    case supervisor:start_child(ejabberd_sup, ChildSpec) of
+    case ejabberd_host_sup:start_child(Host, ChildSpec) of
 	{ok, _PID} ->
 	    ok;
 	_Error ->

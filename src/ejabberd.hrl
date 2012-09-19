@@ -23,6 +23,7 @@
 %% If the ejabberd application description isn't loaded, returns atom: undefined
 -define(VERSION, element(2, application:get_key(ejabberd,vsn))).
 
+-define(RUNNINGHOSTS, ejabberd_hosts:get_running_hosts()).
 -define(MYHOSTS, ejabberd_config:get_global_option(hosts)).
 -define(MYNAME, hd(ejabberd_config:get_global_option(hosts))).
 -define(MYLANG, ejabberd_config:get_global_option(language)).

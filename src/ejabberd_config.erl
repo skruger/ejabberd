@@ -446,6 +446,8 @@ process_term(Term, State) ->
     {modules, MList} ->
         gen_mod:set_host_modules(global, MList),
         State;
+    {auth_method, _Methods} ->
+        process_host_term(Term, global, State);
 	{_Opt, _Val} ->
 	    lists:foldl(fun(Host, S) -> process_host_term(Term, Host, S) end,
 			State, State#state.hosts)
@@ -460,10 +462,6 @@ process_host_term(Term, Host, State) ->
 	    State#state{opts = [#config{key = {access, RuleName, Host},
 					value = Rules} |
 				State#state.opts]};
-	{auth_method, Methods} ->
-	    State#state{opts = [#config{key = {auth_method, Host},
-					value = Methods} |
-				State#state.opts]};
 	{shaper, Name, Data} ->
 	    State#state{opts = [#config{key = {shaper, Name, Host},
 					value = Data} |
@@ -475,21 +473,19 @@ process_host_term(Term, Host, State) ->
     {modules, MList} ->
         gen_mod:set_host_modules(Host, MList),
         State;
-	{odbc_server, ODBC_server} ->
-	    add_option({odbc_server, Host}, ODBC_server, State);
 	{Opt, Val} ->
 	    add_option({Opt, Host}, Val, State)
     end.
 
 add_option(Opt, Val, State) ->
     Table = case Opt of
-		hosts ->
-		    config;
-		language ->
-		    config;
+        {auth_method,_} -> config;
+		hosts -> config;
+		language -> config;
 		_ ->
 		    local_config
 	    end,
+    ?ERROR_MSG("~p, ~p, ~p~n",[Table, Opt, Val]),
     case Table of
 	config ->
 	    State#state{opts = [#config{key = Opt, value = Val} |

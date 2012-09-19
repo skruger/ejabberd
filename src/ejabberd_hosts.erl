@@ -7,12 +7,29 @@
 -export([start_link/0]).
 
 -export([init/1,handle_call/3,handle_cast/2,handle_info/2,terminate/2,code_change/3]).
--export([stop_all_hosts/0,start_host/1,stop_host/1]).
+-export([get_host_list/0,stop_all_hosts/0,start_host/1,stop_host/1]).
+-export([get_running_hosts/0]).
+-export([is_valid_host/1,is_stopped_host/1,is_running_host/1]).
 
 -record(hosts_state,{active_hosts}).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE},?MODULE,[],[]).
+
+get_host_list() ->
+    StaticHosts = ejabberd_config:get_global_option(hosts),
+    DynamicHosts = ejabberd_config:get_global_option(dynamic_hosts),
+    if
+        is_list(DynamicHosts) ->
+            StaticHosts ++ DynamicHosts;
+        true ->
+            StaticHosts
+    end.
+
+get_running_hosts() ->
+    {Replies, _Badnodes} = gen_server:multi_call([node()|nodes()], ?MODULE, get_running_hosts, 1000),
+    {_Nodes, HostLists} = lists:unzip(Replies),
+    lists:usort(lists:append(HostLists)).
 
 start_host(Host) ->
     gen_server:call(?MODULE, {start_host, Host}).
@@ -33,33 +50,55 @@ handle_call({start_host, Host}, ReplyTo, State) ->
 handle_call({stop_host, Host}, ReplyTo, State) ->
     gen_server:cast(self(), {stop_host, Host, ReplyTo}),
     {noreply, State};
+handle_call(get_running_hosts, _From, State) ->
+    {reply, get_local_running_hosts(), State};
 handle_call(_Msg, _From, State) ->
     {reply, {error, invalid}, State}.
 
 handle_cast({start_host, Host, ReplyTo}, State) ->
     ?ERROR_MSG("~p~n", [ {start_host, Host, ReplyTo} ]),
-    HostSupName = ejabberd_host_sup:get_name(Host),
-    HostSup = {HostSupName, {ejabberd_host_sup, start_link, [Host]},
-               permanent, 10000, supervisor, [ejabberd_host_sup]},
-    SupStart = supervisor:start_child(ejabberd_sup, HostSup),
-    ejabberd_rdbms:start_host(Host),
-    Auth = ejabberd_auth:start(Host),
-    start_modules(Host),
-    register_routes(Host),
-    gen_server:cast(self(),{reply, ok, ReplyTo}),
-    ?INFO_MSG("Supervisor result: ~n~p~nAuth results: ~n~p~n",[SupStart,Auth]),
+    Reply =
+    case is_stopped_host(Host) of
+        undefined ->
+            {error, nohost};
+        true ->
+            HostSupName = ejabberd_host_sup:get_name(Host),
+            HostSup = {HostSupName, {ejabberd_host_sup, start_link, [Host]},
+                       permanent, 10000, supervisor, [ejabberd_host_sup]},
+            SupStart = supervisor:start_child(ejabberd_sup, HostSup),
+            ejabberd_rdbms:start_host(Host),
+            Auth = ejabberd_auth:start(Host),
+            start_modules(Host),
+            register_routes(Host),
+            set_host_active(Host),
+            ?INFO_MSG("Supervisor result: ~n~p~nAuth results: ~n~p~n",[SupStart,Auth]),
+            ok;
+        false ->
+            {error, already_running}
+    end,
+    gen_server:cast(self(),{reply, Reply, ReplyTo}),
     {noreply, State};
 handle_cast({stop_host, Host, ReplyTo}, State) ->
     ?ERROR_MSG("~p~n", [ {stop_host, Host, ReplyTo} ]),
-    stop_modules(Host),
-    unregister_routes(Host),
-    Auth = ejabberd_auth:stop(Host),
-    ejabberd_rdbms:stop_host(Host),
-    gen_server:cast(self(),{reply, ok, ReplyTo}),
-    HostSupName = ejabberd_host_sup:get_name(Host),
-    catch supervisor:terminate_child(ejabberd_sup, HostSupName),
-    catch supervisor:delete_child(ejabberd_sup, HostSupName),
-    ?INFO_MSG("Auth results: ~n~p~n",[Auth]),
+    Reply =
+    case is_running_host(Host) of
+        undefined ->
+            {error, nohost};
+        true ->
+            set_host_inactive(Host),
+            stop_modules(Host),
+            unregister_routes(Host),
+            Auth = ejabberd_auth:stop(Host),
+            ejabberd_rdbms:stop_host(Host),
+            HostSupName = ejabberd_host_sup:get_name(Host),
+            catch supervisor:terminate_child(ejabberd_sup, HostSupName),
+            catch supervisor:delete_child(ejabberd_sup, HostSupName),
+            ?INFO_MSG("Auth results: ~n~p~n",[Auth]),
+            ok;
+        false ->
+            {error, not_running}
+    end,
+    gen_server:cast(self(),{reply, Reply, ReplyTo}),
     {noreply, State};
 handle_cast({reply, _Value, false}, State) ->
     {noreply, State};
@@ -118,4 +157,36 @@ stop_modules(Host) ->
         fun(Module) ->
 	        gen_mod:stop_module_keep_config(Host, Module)
     	end, Modules).
+
+get_local_running_hosts() ->
+    case ejabberd_config:get_local_option(running_hosts) of
+        undefined -> [];
+        HostList -> HostList
+    end.
+
+set_host_active(Host) ->
+    Hosts = [Host|get_local_running_hosts()],
+    ejabberd_config:add_local_option(running_hosts, lists:usort(Hosts)).
+
+set_host_inactive(Host) ->
+    Hosts = get_local_running_hosts()--[Host],
+    ejabberd_config:add_local_option(running_hosts, lists:usort(Hosts)).
+
+is_valid_host(Host) ->
+    lists:member(Host,get_host_list()).
+
+is_stopped_host(Host) ->
+    case is_valid_host(Host) of
+        true ->
+            not lists:member(Host,get_local_running_hosts());
+        _ -> undefined
+    end.
+            
+is_running_host(Host) ->
+    case is_valid_host(Host) of
+        true ->
+            lists:member(Host,get_local_running_hosts());
+        _ -> undefined
+    end.
+
 

@@ -54,6 +54,8 @@ start(normal, _Args) ->
     ejabberd_admin:start(),
     gen_mod:start(),
     ejabberd_config:start(),
+    % Clear running host list before the app finishes starting.
+    ejabberd_config:add_local_option(running_hosts, []),
     ejabberd_check:config(),
     connect_nodes(),
     %% Loading ASN.1 driver explicitly to avoid races in LDAP
