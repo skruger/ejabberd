@@ -10,6 +10,7 @@
 -export([get_host_list/0,stop_all_hosts/0,start_host/1,stop_host/1]).
 -export([get_running_hosts/0]).
 -export([is_valid_host/1,is_stopped_host/1,is_running_host/1]).
+-export([get_dynamic_hosts/0,register_host/1,unregister_host/1]).
 
 -record(hosts_state,{active_hosts}).
 
@@ -18,18 +19,40 @@ start_link() ->
 
 get_host_list() ->
     StaticHosts = ejabberd_config:get_global_option(hosts),
-    DynamicHosts = ejabberd_config:get_global_option(dynamic_hosts),
-    if
-        is_list(DynamicHosts) ->
-            StaticHosts ++ DynamicHosts;
-        true ->
-            StaticHosts
-    end.
+    DynamicHosts = get_dynamic_hosts(),
+    StaticHosts ++ DynamicHosts.
 
 get_running_hosts() ->
     {Replies, _Badnodes} = gen_server:multi_call([node()|nodes()], ?MODULE, get_running_hosts, 1000),
     {_Nodes, HostLists} = lists:unzip(Replies),
     lists:usort(lists:append(HostLists)).
+
+get_dynamic_hosts() ->
+    case ejabberd_config:get_global_option(dynamic_hosts) of
+        DHosts when is_list(DHosts) -> DHosts;
+        _ -> []
+    end.
+
+register_host(Host) ->
+    HostList = get_dynamic_hosts(),
+    case lists:member(Host, HostList) of
+        true ->
+            {error, host_exists};
+        false ->
+            ejabberd_config:add_global_option(dynamic_hosts, [Host|HostList])
+    end.
+
+unregister_host(Host) ->
+    HostList = get_dynamic_hosts(),
+    case {lists:member(Host, HostList), is_running_host(Host)} of
+        {true, true} ->
+            {error, host_running};
+        {true, _} ->
+            NewHostList = HostList--[Host],
+            ejabberd_config:add_global_option(dynamic_hosts, NewHostList);
+        {false, _} ->
+            {error, host_not_registered}
+    end.
 
 start_host(Host) ->
     gen_server:call(?MODULE, {start_host, Host}).
