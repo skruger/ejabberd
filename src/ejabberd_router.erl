@@ -187,7 +187,7 @@ unregister_routes(Domains) ->
 
 
 dirty_get_all_routes() ->
-    lists:usort(mnesia:dirty_all_keys(route)) -- ?MYHOSTS.
+    lists:usort(mnesia:dirty_all_keys(route)) -- ?RUNNINGHOSTS.
 
 dirty_get_all_domains() ->
     lists:usort(mnesia:dirty_all_keys(route)).

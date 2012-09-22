@@ -447,7 +447,7 @@ is_service(From, To) ->
 	s2s -> % bypass RFC 3920 10.3
 	    false;
 	_ ->
-	    Hosts = ?MYHOSTS,
+	    Hosts = ?RUNNINGHOSTS,
 	    P = fun(ParentDomain) -> lists:member(ParentDomain, Hosts) end,
 	    lists:any(P, parent_domains(To#jid.lserver))
     end.
@@ -524,7 +524,7 @@ allow_host(MyServer, S2SHost) ->
    allow_host2(MyServer, S2SHost) andalso (not is_temporarly_blocked(S2SHost)).
 
 allow_host2(MyServer, S2SHost) ->
-    Hosts = ?MYHOSTS,
+    Hosts = ?RUNNINGHOSTS,
     case lists:dropwhile(
 	   fun(ParentDomain) ->
 		   not lists:member(ParentDomain, Hosts)

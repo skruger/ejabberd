@@ -329,7 +329,7 @@ send_service_message_all_mucs(Subject, AnnouncementText) ->
 			  ServerHost, mod_muc, "conference.@HOST@"),
 	      mod_muc:broadcast_service_message(MUCHost, Message)
       end,
-      ?MYHOSTS).
+      ?RUNNINGHOSTS).
 
 %%%
 %%% ejabberd_update

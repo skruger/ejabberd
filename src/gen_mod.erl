@@ -161,7 +161,7 @@ get_opt(Opt, Opts, Default) ->
     end.
 
 get_module_opt(global, Module, Opt, Default) ->
-	Hosts = ?MYHOSTS,
+	Hosts = ?RUNNINGHOSTS,
 	[Value | Values] = lists:map(
 		fun(Host) ->
 			get_module_opt(Host, Module, Opt, Default)
@@ -241,7 +241,7 @@ get_hosts(Opts, Prefix) ->
 	{'EXIT', _Error1} ->
 	    case catch gen_mod:get_opt(host, Opts) of
 		{'EXIT', _Error2} ->
-		    [Prefix ++ Host || Host <- ?MYHOSTS];
+		    [Prefix ++ Host || Host <- ?RUNNINGHOSTS];
 		Host ->
 		    [Host]
 	    end;

@@ -30,7 +30,7 @@
 -author('alexey@process-one.net').
 
 %% External exports
--export([start/0,
+-export([
      start/1,
      stop/1,
 	 set_password/3,
@@ -63,9 +63,6 @@
 %%%----------------------------------------------------------------------
 %%% API
 %%%----------------------------------------------------------------------
-start() ->
-    lists:foreach(fun start/1, ?MYHOSTS).
-
 start(Host) ->
     lists:map(
         fun(M) ->
@@ -377,7 +374,7 @@ auth_modules() ->
       lists:flatmap(
 	fun(Server) ->
 		auth_modules(Server)
-	end, ?MYHOSTS)).
+	end, ?ALLHOSTS)).
 
 %% Return the list of authenticated modules for a given host
 auth_modules(Server) ->

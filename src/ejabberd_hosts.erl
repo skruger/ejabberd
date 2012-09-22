@@ -61,7 +61,7 @@ stop_host(Host) ->
     gen_server:call(?MODULE, {stop_host, Host}).
 
 stop_all_hosts() ->
-    lists:map(fun stop_host/1, ?MYHOSTS).
+    lists:map(fun stop_host/1, ?RUNNINGHOSTS).
 
 init(_) ->
     ?INFO_MSG("Starting ~p~n~p~n",[?MODULE, application:which_applications()]),
@@ -137,7 +137,7 @@ handle_cast(Msg, State) ->
 handle_info(finish_init, State) ->
     case is_app_running() of
         true ->
-            [ gen_server:cast(self(), {start_host, H, false}) || H <- ?MYHOSTS];
+            [ gen_server:cast(self(), {start_host, H, false}) || H <- ?ALLHOSTS];
         false ->
             erlang:send_after(250, self(), finish_init)
     end,
