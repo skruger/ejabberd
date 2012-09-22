@@ -54,6 +54,8 @@
 	 get_session_pid/3,
 	 get_user_info/3,
 	 get_user_ip/3,
+     start_host/1,
+     stop_host/1,
 	 is_existing_resource/3
 	]).
 
@@ -270,18 +272,25 @@ init([]) ->
     mnesia:add_table_copy(session_counter, node(), ram_copies),
     mnesia:subscribe(system),
     ets:new(sm_iqtable, [named_table]),
-    lists:foreach(
-      fun(Host) ->
-	      ejabberd_hooks:add(roster_in_subscription, Host,
-				 ejabberd_sm, check_in_subscription, 20),
-	      ejabberd_hooks:add(offline_message_hook, Host,
-				 ejabberd_sm, bounce_offline_message, 100),
-	      ejabberd_hooks:add(remove_user, Host,
-				 ejabberd_sm, disconnect_removed_user, 100)
-      end, ?MYHOSTS),
     ejabberd_commands:register_commands(commands()),
-
     {ok, #state{}}.
+
+start_host(Host) ->
+    ejabberd_hooks:add(roster_in_subscription, Host,
+                ejabberd_sm, check_in_subscription, 20),
+    ejabberd_hooks:add(offline_message_hook, Host,
+                ejabberd_sm, bounce_offline_message, 100),
+    ejabberd_hooks:add(remove_user, Host,
+                ejabberd_sm, disconnect_removed_user, 100).
+
+stop_host(Host) ->
+    ejabberd_hooks:delete(roster_in_subscription, Host,
+                ejabberd_sm, check_in_subscription, 20),
+    ejabberd_hooks:delete(offline_message_hook, Host,
+                ejabberd_sm, bounce_offline_message, 100),
+    ejabberd_hooks:delete(remove_user, Host,
+                ejabberd_sm, disconnect_removed_user, 100).
+    
 
 %%--------------------------------------------------------------------
 %% Function: %% handle_call(Request, From, State) -> {reply, Reply, State} |
@@ -401,7 +410,7 @@ recount_session_table(Node) ->
 				mnesia:write(
 				    #session_counter{vhost = LServer, 
 						     count = length(Hs)})
-			      end, ?MYHOSTS)
+			      end, ?RUNNINGHOSTS)
 	end,
     mnesia:async_dirty(F).
 

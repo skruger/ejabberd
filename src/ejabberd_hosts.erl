@@ -93,6 +93,7 @@ handle_cast({start_host, Host, ReplyTo}, State) ->
             Auth = ejabberd_auth:start(Host),
             start_modules(Host),
             register_routes(Host),
+            ejabberd_sm:start_host(Host),
             set_host_active(Host),
             ?INFO_MSG("Supervisor result: ~n~p~nAuth results: ~n~p~n",[SupStart,Auth]),
             ok;
@@ -109,6 +110,7 @@ handle_cast({stop_host, Host, ReplyTo}, State) ->
             {error, nohost};
         true ->
             set_host_inactive(Host),
+            ejabberd_sm:stop_host(Host),
             stop_modules(Host),
             unregister_routes(Host),
             Auth = ejabberd_auth:stop(Host),

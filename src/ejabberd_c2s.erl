@@ -284,7 +284,7 @@ wait_for_stream({xmlstreamstart, _Name, Attrs}, StateData) ->
     case xml:get_attr_s("xmlns:stream", Attrs) of
 	?NS_STREAM ->
 	    Server = jlib:nameprep(xml:get_attr_s("to", Attrs)),
-	    case lists:member(Server, ?MYHOSTS) of
+	    case lists:member(Server, ?RUNNINGHOSTS) of
 		true ->
 		    Lang = case xml:get_attr_s("xml:lang", Attrs) of
 			       Lang1 when length(Lang1) =< 35 ->

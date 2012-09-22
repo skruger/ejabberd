@@ -41,6 +41,8 @@
      unregister_host/1,
      start_host/1,
      stop_host/1,
+     list_dynamic_hosts/0,
+     reload_erlang_module/1,
 	 %% Migration jabberd1.4
 	 import_file/1, import_dir/1,
 	 %% Purge DB
@@ -139,20 +141,31 @@ commands() ->
 			args = [{host, string}],
 			result = {res, restuple}},
      #ejabberd_commands{name = unregister_host, tags = [server],
-			desc = "Register a host",
+			desc = "Unregister a host",
 			module = ?MODULE, function = unregister_host,
 			args = [{host, string}],
 			result = {res, restuple}},
      #ejabberd_commands{name = start_host, tags = [server],
-			desc = "Register a host",
+			desc = "Start a host",
 			module = ?MODULE, function = start_host,
 			args = [{host, string}],
 			result = {res, restuple}},
      #ejabberd_commands{name = stop_host, tags = [server],
-			desc = "Register a host",
+			desc = "Stop a host",
 			module = ?MODULE, function = stop_host,
 			args = [{host, string}],
 			result = {res, restuple}},
+     #ejabberd_commands{name = list_dynamic_hosts, tags = [server],
+			desc = "List dynamic hosts",
+			module = ?MODULE, function = list_dynamic_hosts,
+			args = [],
+			result = {res, restuple}},
+     #ejabberd_commands{name = reload_erlang_module, tags = [server],
+			desc = "Reload an erlang module to perform a hot code upgrade (use with caution)",
+			module = ?MODULE, function = reload_erlang_module,
+			args = [{module, string}],
+			result = {res, restuple}},
+
      #ejabberd_commands{name = import_file, tags = [mnesia],
 			desc = "Import user data from jabberd14 spool file",
 			module = ?MODULE, function = import_file,
@@ -407,6 +420,28 @@ stop_host(Host) ->
         Err ->
             {error, Err}
     end.
+
+dynamic_host_line(Host) ->
+    State =
+    case ejabberd_hosts:is_running_host(Host) of
+        true -> "running";
+        _ -> "stopped"
+    end,
+    io_lib:format("~s,~s~n",[Host,State]).
+
+list_dynamic_hosts() ->
+    {ok, [dynamic_host_line(H) || H <- ejabberd_hosts:get_dynamic_hosts()]}.
+
+reload_erlang_module(NameStr) ->
+    Name = list_to_atom(NameStr),
+    case code:soft_purge(Name) of
+        true ->
+            L = code:load_file(Name),
+            {ok, io_lib:format("~p", [L])};
+        false ->
+            {error, "There are still processes using the oldest version of this module's code."}
+    end.
+    
 
 %%%
 %%% Migration management
