@@ -36,6 +36,11 @@
 	 %% Accounts
 	 register/3, unregister/2,
 	 registered_users/1,
+     %% Hosts
+     register_host/1,
+     unregister_host/1,
+     start_host/1,
+     stop_host/1,
 	 %% Migration jabberd1.4
 	 import_file/1, import_dir/1,
 	 %% Purge DB
@@ -128,6 +133,26 @@ commands() ->
 			args = [{host, string}],
 			result = {users, {list, {username, string}}}},
 
+     #ejabberd_commands{name = register_host, tags = [server],
+			desc = "Register a host",
+			module = ?MODULE, function = register_host,
+			args = [{host, string}],
+			result = {res, restuple}},
+     #ejabberd_commands{name = unregister_host, tags = [server],
+			desc = "Register a host",
+			module = ?MODULE, function = unregister_host,
+			args = [{host, string}],
+			result = {res, restuple}},
+     #ejabberd_commands{name = start_host, tags = [server],
+			desc = "Register a host",
+			module = ?MODULE, function = start_host,
+			args = [{host, string}],
+			result = {res, restuple}},
+     #ejabberd_commands{name = stop_host, tags = [server],
+			desc = "Register a host",
+			module = ?MODULE, function = stop_host,
+			args = [{host, string}],
+			result = {res, restuple}},
      #ejabberd_commands{name = import_file, tags = [mnesia],
 			desc = "Import user data from jabberd14 spool file",
 			module = ?MODULE, function = import_file,
@@ -342,6 +367,46 @@ registered_users(Host) ->
     SUsers = lists:sort(Users),
     lists:map(fun({U, _S}) -> U end, SUsers).
 
+
+register_host(Host) ->
+    case ejabberd_hosts:register_host(Host) of
+        {atomic, ok} ->
+            {ok, io_lib:format("Host ~s registered.",[Host])};
+        {error, Err} ->
+            {error, Err};
+        Err ->
+            {error, Err}
+    end.
+
+unregister_host(Host) ->
+    case ejabberd_hosts:unregister_host(Host) of
+        {atomic, ok} ->
+            {ok, io_lib:format("Host ~s unregistered.",[Host])};
+        {error, Err} ->
+            {error, Err};
+        Err ->
+            {error, Err}
+    end.
+
+start_host(Host) ->
+    case catch ejabberd_hosts:start_host(Host) of
+        ok ->
+            {ok, io_lib:format("Host ~s started.",[Host])};
+        {error, Err} ->
+            {error, Err};
+        Err ->
+            {error, Err}
+    end.
+
+stop_host(Host) ->
+    case catch ejabberd_hosts:stop_host(Host) of
+        ok ->
+            {ok, io_lib:format("Host ~s stopped.",[Host])};
+        {error, Err} ->
+            {error, Err};
+        Err ->
+            {error, Err}
+    end.
 
 %%%
 %%% Migration management
