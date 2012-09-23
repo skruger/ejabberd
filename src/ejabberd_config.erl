@@ -28,6 +28,7 @@
 -author('alexey@process-one.net').
 
 -export([start/0, load_file/1,
+     load_host_config_str/2,
 	 add_global_option/2, add_local_option/2,
 	 get_global_option/1, get_local_option/1]).
 -export([get_vh_by_auth_method/1]).
@@ -89,6 +90,23 @@ load_file(File) ->
     Terms_macros = replace_macros(Terms),
     Res = lists:foldl(fun process_term/2, State, Terms_macros),
     set_opts(Res).
+
+%% @doc Load an ejabberd configuration from a string for a specific host.
+%% @spec (string(), string())
+load_host_config_str(Host, CfgStr) ->
+    case erl_scan:string(CfgStr) of
+        {ok, Tokens, _} ->
+            case erl_parse:parse_term(Tokens) of
+                {ok, Terms} ->
+            	    Res = lists:foldl(fun(T, S) -> process_host_term(T, Host, S) end,
+                                        #state{}, Terms),
+                    set_opts(Res);
+                PErr ->
+                    {parse_error, PErr}
+            end;
+        SErr ->
+            {scan_error, SErr}
+    end.
 
 %% @doc Read an ejabberd configuration file and return the terms.
 %% Input is an absolute or relative path to an ejabberd config file.
@@ -470,9 +488,9 @@ process_host_term(Term, Host, State) ->
 	    State;
 	{hosts, _Hosts} ->
 	    State;
-    {modules, MList} ->
-        gen_mod:set_host_modules(Host, MList),
-        State;
+%    {modules, MList} ->
+%        gen_mod:set_host_modules(Host, MList),
+%        State;
 	{Opt, Val} ->
 	    add_option({Opt, Host}, Val, State)
     end.
@@ -480,6 +498,7 @@ process_host_term(Term, Host, State) ->
 add_option(Opt, Val, State) ->
     Table = case Opt of
         {auth_method,_} -> config;
+        {modules,_} -> config;
 		hosts -> config;
 		language -> config;
 		_ ->
