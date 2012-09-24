@@ -127,6 +127,10 @@ init({SockMod, Socket}, Opts) ->
             true -> [{["register"], mod_register_web}];
             false -> []
         end ++
+        case lists:member(ejabberd_api, Opts) of
+            true -> [{["api"], ejabberd_api}];
+            false -> []
+        end ++
         case lists:member(web_admin, Opts) of
             true -> [{["admin"], ejabberd_web_admin}];
             false -> []
