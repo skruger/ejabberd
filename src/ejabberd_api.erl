@@ -29,7 +29,7 @@ process(Path, #request{auth=UserInfo}=Request) ->
 
 process_safe(["domain","register",Domain], #request{data=Data}=_Request) ->
     Conf =
-    case mjson:decode(Data) of
+    case catch mjson:decode(Data) of
         {struct, JProps} ->
             case proplist:get_value(<<"domain_config">>, JProps, <<"[].">>) of
                 CfgBin when is_binary(CfgBin) ->
@@ -41,13 +41,63 @@ process_safe(["domain","register",Domain], #request{data=Data}=_Request) ->
         _ ->
             "[]."
     end,
-    ejabberd_config:load_host_config_str(Domain, Conf),
     case ejabberd_hosts:register_host(Domain) of
         {atomic, ok} ->
-            {200, [], "Host registered"};
+            ejabberd_config:load_host_config_str(Domain, Conf),
+            {200, [], json_out([{"result",<<"ok">>},
+                                {"domain", list_to_binary(Domain)},
+                                {"registered",ejabberd_hosts:is_valid_host(Domain)},
+                                {"running", ejabberd_hosts:is_running_host(Domain)}])};
         {error, Err} ->
-            {400, [], io_lib:format("Host not registered: ~p",[ Err])}
+            {400, [], json_out([{"result",<<"error">>},
+                                {"domain", list_to_binary(Domain)},
+                                {"error", iolist_to_binary(io_lib:format("~p",[Err]))}])}
     end;
+process_safe(["domain","unregister",Domain], _Request) ->
+    case ejabberd_hosts:unregister_host(Domain) of
+        {atomic, ok} ->
+            {200, [], json_out([{"result",<<"removed">>},
+                                {"domain",list_to_binary(Domain)}])};
+        {error, Reason} ->
+            {400, [], json_out([{"result",<<"error">>},
+                                {"domain", list_to_binary(Domain)},
+                                {"error", iolist_to_binary(io_lib:format("~p",[Reason]))}])}
+    end;
+process_safe(["domain","start",Domain], _Req) ->
+    case ejabberd_hosts:start_host(Domain) of
+        ok ->
+            {200, [], json_out([{"result",<<"ok">>},
+                                {"domain",list_to_binary(Domain)}])};
+        {error, Reason} ->
+            {400, [], json_out([{"result",<<"error">>},
+                                {"domain",list_to_binary(Domain)},
+                                {"error",iolist_to_binary(io_lib:format("~p",[Reason]))}])}
+    end;
+process_safe(["domain","stop",Domain],_Req) ->
+    case ejabberd_hosts:stop_host(Domain) of
+        ok ->
+            {200, [], json_out([{"result",<<"ok">>},
+                                {"domain",list_to_binary(Domain)}])};
+        {error, Reason} ->
+            {400, [], json_out([{"result",<<"error">>},
+                                {"domain",list_to_binary(Domain)},
+                                {"error",iolist_to_binary(io_lib:format("~p",[Reason]))}])}
+    end;
+    
+process_safe(["domain","status",Domain], _Req) ->
+    {200, [], json_out([{"result",<<"ok">>},
+                        {"domain", list_to_binary(Domain)},
+                        {"running",ejabberd_hosts:is_running_host(Domain)},
+                        {"registered",ejabberd_hosts:is_valid_host(Domain)},
+                        {"online_users",ejabberd_sm:get_vh_session_number(Domain)},
+                        {"registered_users", ejabberd_auth:get_vh_registered_users_number(Domain)}])};
+process_safe(["domain","list"], _Req) ->
+    Domains =
+    [ {struct,[{"domain", list_to_binary(D)},
+               {"running", ejabberd_hosts:is_running_host(D)}]}
+            || D <- ejabberd_hosts:get_dynamic_hosts()],
+    json_out([{"result",<<"ok">>},
+              {"domains", Domains}]);
 process_safe(Path, Request) ->
     ?ERROR_MSG("Path not found: ~p~n~p~n", [Path, Request]),
     {404, [], "Not Found."}.
