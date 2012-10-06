@@ -204,14 +204,14 @@ is_stopped_host(Host) ->
     case is_valid_host(Host) of
         true ->
             not lists:member(Host,get_local_running_hosts());
-        _ -> undefined
+        _ -> false
     end.
             
 is_running_host(Host) ->
     case is_valid_host(Host) of
         true ->
             lists:member(Host,get_local_running_hosts());
-        _ -> undefined
+        _ -> false
     end.
 
 
