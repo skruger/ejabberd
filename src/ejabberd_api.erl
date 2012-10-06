@@ -31,7 +31,7 @@ process_safe(["domain","register",Domain], #request{data=Data}=_Request) ->
     Conf =
     case catch mjson:decode(Data) of
         {struct, JProps} ->
-            case proplist:get_value(<<"domain_config">>, JProps, <<"[].">>) of
+            case proplists:get_value(<<"domain_config">>, JProps, <<"[].">>) of
                 CfgBin when is_binary(CfgBin) ->
                     binary_to_list(CfgBin);
                 CfgErr ->
@@ -98,6 +98,21 @@ process_safe(["domain","list"], _Req) ->
             || D <- ejabberd_hosts:get_dynamic_hosts()],
     json_out([{"result",<<"ok">>},
               {"domains", Domains}]);
+process_safe(["domain","userlist",Domain], _Req) ->
+    case ejabberd_hosts:is_valid_host(Domain) of
+        true ->
+            Users = [list_to_binary(U) || {U,_S} <- ejabberd_auth:get_vh_registered_users(Domain)],
+            {200, [], json_out([{"result",<<"ok">>},
+                                {"domain", list_to_binary(Domain)},
+                                {"users", Users}])};
+        Err ->
+            ErrStr = io_lib:format("~p",[Err]),
+            {400, [], json_out([{"result",<<"error">>},
+                                {"error",iolist_to_binary(ErrStr)}])}
+    end;
+%process_safe(["domain","userlist",Domain,"register",User], _Req) ->
+    
+
 process_safe(Path, Request) ->
     ?ERROR_MSG("Path not found: ~p~n~p~n", [Path, Request]),
     {404, [], "Not Found."}.
