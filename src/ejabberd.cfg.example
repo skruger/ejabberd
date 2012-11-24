@@ -369,6 +369,8 @@
 %%{acl, admin, {user, "aleksey", "localhost"}}.
 %%{acl, admin, {user, "ermine", "example.org"}}.
 
+{acl, admin, {user, "admin", "localhost"}}.
+
 {acl, api_admin, {user, "admin", "localhost"}}.
 
 %%
