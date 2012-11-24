@@ -159,6 +159,7 @@
 			 %% [
 			 %%  {["pub", "archive"], mod_http_fileserver}
 			 %% ]},
+			 ejabberd_api,
 			 captcha,
 			 http_bind,
 			 http_poll,
@@ -368,6 +369,8 @@
 %%{acl, admin, {user, "aleksey", "localhost"}}.
 %%{acl, admin, {user, "ermine", "example.org"}}.
 
+{acl, api_admin, {user, "admin", "localhost"}}.
+
 %%
 %% Blocked users
 %%
@@ -399,6 +402,9 @@
 
 %%%.   ============
 %%%'   ACCESS RULES
+
+%% Allow api_admin users to use the provisioning API.
+{access, api_admin, [{allow, api_admin}]}.
 
 %% Maximum number of simultaneous sessions allowed for a single user:
 {access, max_user_sessions, [{10, all}]}.

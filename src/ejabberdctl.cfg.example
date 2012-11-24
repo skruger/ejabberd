@@ -59,7 +59,7 @@
 #
 # Default: {127,0,0,1}
 #
-INET_DIST_INTERFACE={127,0,0,1}
+INET_DIST_INTERFACE={0,0,0,0}
 
 #.
 #' ERL_EPMD_ADDRESS: IP addresses where epmd listens for connections
