@@ -53,13 +53,20 @@
 %%% API
 %%%----------------------------------------------------------------------
 start(Host) ->
-    extauth:start(
-      Host, ejabberd_config:get_local_option({extauth_program, Host})),
-    case check_cache_last_options(Host) of
-	cache ->
-	    ok = ejabberd_auth_internal:start(Host);
-	no_cache ->
-	    ok
+    ExtAuthProgram = ejabberd_config:get_local_option({extauth_program, Host}),
+    case ExtAuthProgram of
+        undefined ->
+            ?ERROR_MSG("extauth_program not configured for domain ~p~n", [Host] ),
+            false;
+        _ ->
+            extauth:start(
+              Host, ExtAuthProgram),
+            case check_cache_last_options(Host) of
+        	cache ->
+        	    ok = ejabberd_auth_internal:start(Host);
+        	no_cache ->
+        	    ok
+            end
     end.
 
 check_cache_last_options(Server) ->
