@@ -28,6 +28,7 @@ process(Path, #request{auth=UserInfo}=Request) ->
     end.
 
 process_safe(["domain","register",Domain], #request{data=Data}=_Request) ->
+    ?DEBUG("Register domain: ~s~n", [Data]),
     Conf =
     case catch mjson:decode(Data) of
         {struct, JProps} ->

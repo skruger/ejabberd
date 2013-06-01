@@ -100,6 +100,7 @@ load_host_config_str(Host, CfgStr) ->
                 {ok, Terms} ->
             	    Res = lists:foldl(fun(T, S) -> process_host_term(T, Host, S) end,
                                         #state{}, Terms),
+                    ?DEBUG("Setting host ~p options:\n~p~n", [Host, Res]),
                     set_opts(Res);
                 PErr ->
                     {parse_error, PErr}
