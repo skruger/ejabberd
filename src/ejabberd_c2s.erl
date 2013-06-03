@@ -584,7 +584,7 @@ wait_for_auth({xmlstreamelement, El}, StateData) ->
 				jlib:jid_to_string(JID)]),
 			    Err = jlib:make_error_reply(El, ?ERR_PAYMENT_REQUIRED),
 			    send_element(StateData, Err),
-			    fsm_next_state(wait_for_auth, StateData)
+			    fsm_next_state(wait_for_auth, StateData);
 			true ->
 			    ?INFO_MSG(
 			       "(~w) Forbidden legacy authentication for ~s",
