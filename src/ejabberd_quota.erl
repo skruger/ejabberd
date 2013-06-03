@@ -37,6 +37,7 @@ allow_domain_login(Domain) ->
         undefined -> infinity;
         Ct -> Ct
     end,
+    ?DEBUG("Got concurrent_user_quota = ~p for ~p~n", [QuotaCt, Domain]),
     CurrentUserCt = ejabberd_sm:get_vh_session_number(Domain),
     QuotaCt > CurrentUserCt.
 
