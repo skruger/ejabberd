@@ -505,9 +505,11 @@ wait_for_auth({xmlstreamelement, El}, StateData) ->
 	    fsm_next_state(wait_for_auth, StateData);
 	{auth, _ID, set, {U, P, D, R}} ->
 	    JID = jlib:make_jid(U, StateData#state.server, R),
+        QuotaAvailable = ejabberd_quota:allow_domain_login(StateData#state.server),
 	    case (JID /= error) andalso
 		(acl:match_rule(StateData#state.server,
-				StateData#state.access, JID) == allow) of
+				StateData#state.access, JID) == allow) andalso
+        QuotaAvailable of
 		true ->
                     DGen = fun(PW) ->
                              sha:sha(StateData#state.streamid ++ PW) end,
@@ -575,6 +577,14 @@ wait_for_auth({xmlstreamelement, El}, StateData) ->
 			    Err = jlib:make_error_reply(El, ?ERR_JID_MALFORMED),
 			    send_element(StateData, Err),
 			    fsm_next_state(wait_for_auth, StateData);
+            QuotaAvailable == false ->
+			    ?INFO_MSG(
+			       "(~w) User Login quota exceeded for ~s",
+			       [StateData#state.socket,
+				jlib:jid_to_string(JID)]),
+			    Err = jlib:make_error_reply(El, ?ERR_PAYMENT_REQUIRED),
+			    send_element(StateData, Err),
+			    fsm_next_state(wait_for_auth, StateData)
 			true ->
 			    ?INFO_MSG(
 			       "(~w) Forbidden legacy authentication for ~s",
