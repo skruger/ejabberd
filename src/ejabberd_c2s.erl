@@ -638,7 +638,8 @@ wait_for_feature_request({xmlstreamelement, El}, StateData) ->
 		    send_element(StateData,
 				 {xmlelement, "failure",
 				  [{"xmlns", ?NS_SASL}],
-				  [{xmlelement, "payment-required", [], []}]}),
+				  [{xmlelement, "payment-required", [], []},
+                   {xmlcdata, "Concurrent login quota exceeded."}]}),
 		    {next_state, wait_for_feature_request, StateData,
 		     ?C2S_OPEN_TIMEOUT};
 		{ok, Props} ->
