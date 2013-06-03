@@ -625,11 +625,22 @@ wait_for_feature_request({xmlstreamelement, El}, StateData) ->
     SockMod = (StateData#state.sockmod):get_sockmod(StateData#state.socket),
     case {xml:get_attr_s("xmlns", Attrs), Name} of
 	{?NS_SASL, "auth"} when not ((SockMod == gen_tcp) and TLSRequired) ->
+        QuotaAvailable = ejabberd_quota:allow_domain_login(StateData#state.server),
 	    Mech = xml:get_attr_s("mechanism", Attrs),
 	    ClientIn = jlib:decode_base64(xml:get_cdata(Els)),
 	    case cyrsasl:server_start(StateData#state.sasl_state,
 				      Mech,
 				      ClientIn) of
+        {ok, _Props} when QuotaAvailable == false ->
+		    ?INFO_MSG(
+		       "(~w) Concurrent user quota exceeded for ~s",
+		       [StateData#state.socket, StateData#state.server]),
+		    send_element(StateData,
+				 {xmlelement, "failure",
+				  [{"xmlns", ?NS_SASL}],
+				  [{xmlelement, "payment-required", [], []}]}),
+		    {next_state, wait_for_feature_request, StateData,
+		     ?C2S_OPEN_TIMEOUT};
 		{ok, Props} ->
 		    (StateData#state.sockmod):reset_stream(
 		      StateData#state.socket),
