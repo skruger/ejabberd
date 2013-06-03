@@ -27,6 +27,8 @@
 -module(ejabberd_quota).
 -author('skruger@chatmongers.com').
 
+-include("ejabberd.hrl").
+
 -export([
     allow_domain_login/1
     ]).
