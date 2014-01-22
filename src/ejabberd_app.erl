@@ -5,7 +5,7 @@
 %%% Created : 31 Jan 2003 by Alexey Shchepin <alexey@process-one.net>
 %%%
 %%%
-%%% ejabberd, Copyright (C) 2002-2012   ProcessOne
+%%% ejabberd, Copyright (C) 2002-2013   ProcessOne
 %%%
 %%% This program is free software; you can redistribute it and/or
 %%% modify it under the terms of the GNU General Public License as
@@ -82,6 +82,7 @@ start(_, _) ->
 %% before shutting down the processes of the application.
 prep_stop(State) ->
     ejabberd_hosts:stop_all_hosts(),
+    ejabberd_listener:stop_listeners(),
     ejabberd_admin:stop(),
     broadcast_c2s_shutdown(),
     timer:sleep(5000),
