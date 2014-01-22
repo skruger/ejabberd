@@ -376,7 +376,7 @@ process_request(#state{request_method = Method,
 	{'EXIT', _} ->
 	    make_bad_request(State);
 	{NPath, Query} ->
-	    LPath = [path_decode(NPE) || NPE <- string:tokens(NPath, "/")],
+	    LPath = normalize_path([NPE || NPE <- string:tokens(path_decode(NPath), "/")]),
 	    LQuery = case (catch parse_urlencoded(Query)) of
 			 {'EXIT', _Reason} ->
 			     [];
@@ -453,7 +453,7 @@ process_request(#state{request_method = Method,
 	{'EXIT', _} ->
             make_bad_request(State);
 	{NPath, _Query} ->
-	    LPath = [path_decode(NPE) || NPE <- string:tokens(NPath, "/")],
+	    LPath = normalize_path([NPE || NPE <- string:tokens(path_decode(NPath), "/")]),
 	    LQuery = case (catch parse_urlencoded(Data)) of
 			 {'EXIT', _Reason} ->
 			     [];
@@ -1129,3 +1129,14 @@ drop_spaces(YS=[X|XS]) ->
 	false ->
 	    YS
     end.
+
+normalize_path(Path) ->
+    normalize_path(Path, []).
+
+normalize_path([], Norm) -> lists:reverse(Norm);
+normalize_path([".."|Path], Norm) ->
+    normalize_path(Path, Norm);
+normalize_path([_Parent, ".."|Path], Norm) ->
+    normalize_path(Path, Norm);
+normalize_path([Part | Path], Norm) ->
+    normalize_path(Path, [Part|Norm]).
