@@ -35,7 +35,6 @@
 -export([count_offline_messages/2]).
 
 -export([start/2,
-	 loop/2,
 	 stop/1,
 	 store_packet/3,
 	 resend_offline_messages/2,
@@ -109,7 +108,7 @@ handle_call(_Msg, _From, State) -> {reply, error, State}.
 handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info(#offline_msg{us=US} = Msg, AccessMaxOfflineMsgs) ->
-    {User, Host} = US,
+    {_User, Host} = US,
     DBType = gen_mod:db_type(Host, ?MODULE),
     Msgs = receive_all(US, [Msg], DBType),
     Len = length(Msgs),
