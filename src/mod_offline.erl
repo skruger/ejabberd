@@ -93,7 +93,6 @@ start(Host, Opts) ->
     ejabberd_hooks:add(webadmin_user_parse_query, Host,
                        ?MODULE, webadmin_user_parse_query, 50),
     AccessMaxOfflineMsgs = gen_mod:get_opt(access_max_user_messages, Opts, max_user_offline_messages),
-<<<<<<< HEAD
     ModProc = gen_mod:get_module_proc(Host, ?PROCNAME),
     ChildSpec = {ModProc, {?MODULE, start_link, [ModProc,AccessMaxOfflineMsgs]},
                  transient, 1000, worker, [?MODULE]},
@@ -110,36 +109,13 @@ handle_call(_Msg, _From, State) -> {reply, error, State}.
 handle_cast(_Msg, State) -> {noreply, State}.
 
 handle_info(#offline_msg{us=US} = Msg, AccessMaxOfflineMsgs) ->
-    Msgs = receive_all(US, [Msg]),
-    Len = length(Msgs),
     {User, Host} = US,
+    DBType = gen_mod:db_type(Host, ?MODULE),
+    Msgs = receive_all(US, [Msg], DBType),
+    Len = length(Msgs),
     MaxOfflineMsgs = get_max_user_messages(AccessMaxOfflineMsgs,
-                       User, Host),
-    F = fun() ->
-        %% Only count messages if needed:
-        Count = if MaxOfflineMsgs =/= infinity ->
-                Len + p1_mnesia:count_records(
-                    offline_msg, 
-                    #offline_msg{us=US, _='_'});
-               true -> 
-                0
-            end,
-        if
-            Count > MaxOfflineMsgs ->
-            discard_warn_sender(Msgs);
-            true ->
-            if
-                Len >= ?OFFLINE_TABLE_LOCK_THRESHOLD ->
-                mnesia:write_lock_table(offline_msg);
-                true ->
-                ok
-            end,
-            lists:foreach(fun(M) ->
-                          mnesia:write(M)
-                      end, Msgs)
-        end
-    end,
-    mnesia:transaction(F),
+                       US, Host),
+    store_offline_msg(Host, US, Msgs, Len, MaxOfflineMsgs, DBType),
     {noreply, AccessMaxOfflineMsgs};
 handle_info(_Msg, State) ->
     {noreply, State}.
@@ -147,23 +123,6 @@ handle_info(_Msg, State) ->
 terminate(_Reason, _State) -> ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
-=======
-    register(gen_mod:get_module_proc(Host, ?PROCNAME),
-	     spawn(?MODULE, loop, [Host, AccessMaxOfflineMsgs])).
-
-loop(Host, AccessMaxOfflineMsgs) ->
-    receive
-        #offline_msg{us = UserServer} = Msg ->
-            DBType = gen_mod:db_type(Host, ?MODULE),
-	    Msgs = receive_all(UserServer, [Msg], DBType),
-	    Len = length(Msgs),
-	    MaxOfflineMsgs = get_max_user_messages(AccessMaxOfflineMsgs,
-						   UserServer, Host),
-            store_offline_msg(Host, UserServer, Msgs, Len, MaxOfflineMsgs, DBType),
-            loop(Host, AccessMaxOfflineMsgs);
-        _ ->
-	    loop(Host, AccessMaxOfflineMsgs)
-    end.
 
 store_offline_msg(_Host, US, Msgs, Len, MaxOfflineMsgs, mnesia) ->
     F = fun() ->
@@ -232,7 +191,6 @@ store_offline_msg(Host, {User, _Server}, Msgs, Len, MaxOfflineMsgs, odbc) ->
                       end, Msgs),
             odbc_queries:add_spool(Host, Query)
     end.
->>>>>>> v2.1.12
 
 %% Function copied from ejabberd_sm.erl:
 get_max_user_messages(AccessRule, {User, Server}, Host) ->
