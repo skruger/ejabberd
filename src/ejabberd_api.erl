@@ -27,6 +27,20 @@ process(Path, #request{auth=UserInfo}=Request) ->
             end
     end.
 
+process_safe(["message","send","xml"], #request{data=Data, auth={Sender,_Pass}}=_Request) ->
+    SenderJID = jlib:string_to_jid(Sender),
+    Packet = xml_stream:parse_element(Data),
+    {xmlelement, _Name, Attrs, _Els} = Packet,
+    Target = xml:get_attr_s("to", Attrs),
+    TargetJID = jlib:string_to_jid(Target),
+    ?DEBUG("Message:~n~p~nFrom: ~p~nTo: ~p~n(~p)~n", [Data, SenderJID, TargetJID, Target]),
+    case catch ejabberd_router:route(SenderJID, TargetJID, Packet) of
+        ok ->
+            {200, [], json_out([{"result", <<"ok">>}])};
+        Error ->
+            {500, [], json_out([{"result", <<"error">>},
+                                {"error", iolist_to_binary(io_lib:format("~p", [Error]))}])}
+    end;
 process_safe(["domain","register",Domain], #request{data=Data}=_Request) ->
     ?DEBUG("Register domain: ~s~n", [Data]),
     Conf =
